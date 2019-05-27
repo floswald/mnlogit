@@ -1,0 +1,86 @@
+Changes since version 1.2.4
+	
+	* Fixed a bug in predict.R, thanks to John Eric Humphries of U Chicago for the catch.
+
+	* Replaced OpenMP C++ compiler check from the deprecated SUPPORT_OPENMP to _OPENMP
+
+	* Included CITATION file to reflect JSS paper.
+
+Changes since version 1.2.3
+
+	* Fixed a bug in likelihood calculation when 'weights' isn't NULL. Thanks to Fan Yang of U Chicago for reporting.
+	
+	* Weights are now normalized such that their sum equal num obs.
+
+Changes since version 1.2.2
+
+	* Fixed a bug in AIC calculation
+	
+	* Fixed a requirement in predict for newdata to have response column
+
+Changes since version 1.2.1
+	
+	* Made a change in mnlogit.R return field est.stat so that pre-processing time is returned.
+	
+	* Made a change in mnlogit.R return field est.stat so that pre-processing time is returned.
+
+Changes since version 1.2.0
+	
+	* Fixed a bug in predict(). Thanks to Frank Zhe Wang of UNC for reporting.
+
+	* Fixed a bug in predict() for handling choiceVar arg. 
+
+	* Fixed a bug in mnlogit.R in getting correct order of names for choices. Thanks to Matthew Levinson for reporting.
+
+	* Added droplevels() when converting response col to T/F in mnlogit.R
+
+	* Added UseMethod() to allow index() to be called on mnlogit objects
+
+	* Added argument 'what' in print.mnlogit()
+
+	* Slightly changed wording of output in print.model.size 
+
+	* Minor correction in comments in file mnlogit/src/hessian.h
+
+Changes since version 1.1.1
+
+	* Made choiceVar arg in mnlogit() optional when data is a mlogit.data obj.
+
+	* Added arg alt.subset in mnlogit() call to estimate on a subset of alternatives.
+
+	* Added arg start in mnlogit() call to accept an initial guess for coeffs.
+ 
+	* Added hypothesis tests - 3 MLE test and one test for IIA.   
+ 
+	* Added Several methods for mnlogit objects to match mlogit methods.
+	
+	* Residual calculation now matches mlogit.
+	
+	* The output of newtonRaphson() has been slightly changed for residual field.
+
+	* mnlogit() returns an object with slightly different fields, matching mlogit.
+
+	* formulaParser() now relies on the Formula package for manipulating formulas.
+
+	* Fixed a bug in newtonRaphson() related to failed linesearch situations.
+
+Changes since version 1.1.0
+
+	* Fixed a critical bug in calling compiled code with incorrect matrix args.
+
+Changes since version 1.0.1
+	
+	* Changed predict function using contributed code.
+
+	* Included weights option in mnlogit() call.
+
+	* Gradient norm for stopping now computed wrt inverse Hessian.
+
+	* Fixed a bug with the lowest allowed step size during line search.
+
+	* Changed .C() with DUP=FALSE to .Call() to meet CRAN requirements.
+
+Changes since version 1.0.0
+	
+	* Inserted include guards for all openMP commands.
+
