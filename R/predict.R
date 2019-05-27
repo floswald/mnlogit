@@ -1,14 +1,11 @@
-##########################################################################
-## predict method for mnlogit objects                                    #
-## Contributed by: Florian Oswald, University College London             #
-## Homepage: http://floswald.github.io					 #
-##########################################################################
-predict.mnlogit <- function(object, newdata=NULL, probability=TRUE,
-                            returnData = FALSE, choiceVar=NULL, ...) 
+# predict method for mnlogit objects
+# Contributed by: Florian Oswald, Univeristy College London
+predict.mnlogit <- function(object, newdata=NULL, probability=FALSE, ...) 
 {
     size     <- object$model.size
     # get choice set for colnames
-    choiceSet <- unique(index(object)$alt)
+    choiceVar <- object$call$choiceVar
+    choiceSet <- unique(object$data[[choiceVar]])
 
     if (is.null(newdata)) {
         # if no new data, use probabilities computed during training model
@@ -19,40 +16,27 @@ predict.mnlogit <- function(object, newdata=NULL, probability=TRUE,
 			object$choices[which(x == max(x, na.rm = TRUE))]))
         }
     } else {
-	# make sure newdata is ordered by choice
-        if (is.null(choiceVar)) {
-          if (!any(class(newdata) == "mlogit.data"))
-            stop("NULL choiceVar requires newdata to be a mlogit.data object")
-          if (nrow(newdata) != nrow(attr(newdata, "index")))
-            stop("mlogit.data object newdata has incorrect index attribute")
-          choiceVar <- "_Alt_Indx_"
-          newdata[[choiceVar]] <- attr(newdata, "index")$alt
-          #newdata[[choiceVar]] <- index(object)$alt
-        }
-	newdata <- newdata[order(newdata[[choiceVar]]), ]
-
-	# Get name of response column
-	pf <- parseFormula(object$formula)
-	resp.col <- attr(pf, "response")
-
-        # check that all columns from data are present (except response col)
+        # check that all columns from data are present
         # this is important when you build Y below.
 	newn <- names(newdata)
-	oldn <- setdiff(names(object$model), resp.col)
+	oldn <- names(object$data)
+
 	if (!all(oldn %in% newn))
 	    stop("newdata must have same columns as training data. ")
 
+	# make sure newdata is ordered by choice
+	newdata <- newdata[order(newdata[[choiceVar]]), ]
+
 	# different model size: N # newdata must have N*K rows
 	if (nrow(newdata) %% size$K)
-	  stop("Mismatch between nrows in newdata and number of choices.")
+	  stop("Mismatch between number of rows in newdata and number of choices.")
     }
+
     data <- newdata
     size$N <- nrow(data)/size$K       # number of individuals
-    if (!(resp.col %in% names(data))) # attach a response column 
-        data[[resp.col]] <- rep(1, size$N)
-
+    
     # Initialize utility matrix: dim(U) = N x K-1
-    probMat <- matrix(rep(0, size$N * (size$K-1)), nrow=size$N, ncol=size$K-1)
+    probMat <- matrix(rep(0, size$N * (size$K-1)), nrow = size$N, ncol = size$K-1)
 
     formDesignMat <- function(varVec = NULL, includeIntercept = TRUE)
     {
@@ -65,7 +49,7 @@ predict.mnlogit <- function(object, newdata=NULL, probability=TRUE,
         modMat <- model.matrix(as.formula(fm), data)
     }
     # Grab the parsed formula from the fitted mnlogit object 
-    formula  <- parseFormula(object$formula)
+    formula  <- object$formula
     X <- formDesignMat(varVec = attr(formula, "indSpVar"), 
                        includeIntercept = attr(formula, "Intercept"))
     X <- if (!is.null(X)) X[1:size$N, , drop=FALSE]   # Matrix of ind sp vars
@@ -80,8 +64,8 @@ predict.mnlogit <- function(object, newdata=NULL, probability=TRUE,
     if(!is.null(Z)) { 
         for (ch_k in 2:size$K) {
             Z[((ch_k - 1)*size$N + 1):(ch_k*size$N), ] <-
-              Z[((ch_k-1)*size$N+1):(ch_k*size$N), , drop=FALSE] - 
-	      Z[1:size$N, , drop=FALSE]
+              Z[((ch_k-1)*size$N+1):(ch_k*size$N), , drop=FALSE] 
+                  - Z[1:size$N, , drop=FALSE]
         }
     }
     # Drop rows for base alternative
@@ -127,13 +111,11 @@ predict.mnlogit <- function(object, newdata=NULL, probability=TRUE,
 	 	
     colnames(probMat) <- choiceSet
 
-    if (probability) {
-         if (returnData) attr(probMat, "data") <- newdata
+    if (probability)
 	return(probMat)
-    } else {
+    else {
 	choice <- apply(probMat, 1, function(x)
 			object$choices[which(x == max(x, na.rm = TRUE))])
-        if (returnData) attr(choice, "data") <- newdata
 	return(choice)
     }
 }

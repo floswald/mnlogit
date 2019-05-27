@@ -13,6 +13,7 @@
 #   ncores  - number of processors allowed to use
 #   hess - Evaluate Hessian & gradient only if TRUE
 #   weights - a vector of frequency weights
+#   predict - Only compute & return probability matrix if TRUE
 #   loglikObj - If not NULL, gradient & the probability matrix are grabbed
 #               from this, else they are computed
 #
@@ -29,7 +30,7 @@
 #   Calls a C++ function to evaluate the Hessian.
 #############################################################################
 likelihood <- function(response, X, Y, Z, size, coeffVec, ncores, hess=TRUE, 
-                       weights = NULL, loglikObj = NULL)
+                       weights = NULL, predict = FALSE, loglikObj = NULL)
 {
     t0 <- t1 <- t2 <- proc.time()[3]
     
@@ -78,7 +79,10 @@ likelihood <- function(response, X, Y, Z, size, coeffVec, ncores, hess=TRUE,
         loglik <- if (is.null(weights))
                       -1*(loglik + sum(log(baseProbVec)))
                   else
-                      -1*(loglik + weights %*% log(baseProbVec))  
+                      -1*(loglik + weights %*% baseProbVec)  
+
+        if (predict)
+            return(cbind(baseProbVec, probMat))
 
     } else {
         loglik <- loglikObj
@@ -133,10 +137,20 @@ likelihood <- function(response, X, Y, Z, size, coeffVec, ncores, hess=TRUE,
             if (is.null(X)) NULL else as.double(t(X)), 
             if (is.null(Y)) NULL else as.double(t(Y)), 
             if (is.null(Z)) NULL else as.double(Z),
-            if (is.null(weights)) NULL else as.double(weights),
-            probMat, baseProbVec, as.integer(ncores), hessMat)
+            weights, probMat, baseProbVec, as.integer(ncores), hessMat)
        hessMat
     } else NULL
+    #ans <- if (hess) { # Disallowed on CRAN with DUP=FALSE 
+    #  .C("computeHessian" , as.integer(size$N), as.integer(size$K),
+    #    as.integer(size$p), as.integer(size$f), as.integer(size$d), 
+    #    if (is.null(weights)) as.integer(0) else as.integer(1),
+    #    if (is.null(X)) matrix(1) else as.double(t(X)), 
+    #    if (is.null(Y)) matrix(1) else as.double(t(Y)), 
+    #    if (is.null(Z)) matrix(1) else as.double(Z),
+    #    if (is.null(weights)) matrix(1) else as.double(weights),
+    #    as.double(probMat), as.double(baseProbVec), as.integer(ncores),
+    #    hessMat = as.double(rep(0, size$nparams*size$nparams)), DUP=FALSE)
+    #} else NULL
     t3 <- proc.time()[3]  # Time after Hessian evaluation
     
     # Prepare to return

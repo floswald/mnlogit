@@ -3,60 +3,48 @@
 #                                                                             #
 # Multinomial logit, maximum likelihood estimation by Newton-Raphson method   #
 #                                                                             #
+# Implementors: Wang Zhiyu, Asad Hasan                                        # 
 #               Scientific Computing Group, Sentrana Inc.                     #
 ###############################################################################
 
 ###############################################################################
-#                 Main user function                                          # 
-# Args:  							              #
-#   formula     - same format as mlogit. See help(formula)                    #
-#   data        - input data (as a data.frame object) in "long" format        #
-#   choiceVar   - the data column containing alternative names                #
-#   maxiter     - maximum number of Newton-Raphson iterations to run          #
-#   ftol        - function tolerance.                                         #
-#                 Difference of two consecutive function evaluation           #
-#                 Criteria of terminating Newton's Iterative process          #
-#   gtol        - gradient norm tolerance.                                    #
-#   weights     - an optional vector of positive frequency weights.           #
-#   ncores      - number of processors allowed to use                         #
-#   na.rm       - if FALSE then stop(), else remove rows of data with NA      #
-#   print.level - increase from 0 to progressively print more runing info     #
-#   linDepTol   - tolerance with which linear dep among cols is detected      #
-#   start       - initial vector of coefficients                              #
-#   alt.subset  - subset of alternatives to perform estimation on             #
-#   ...         - currently unused                                            #
-#                                                                             #
-# Output:                                                                     #
-#   mnlogit object                                                            #
-#                                                                             #
-# Note:                                                                       #
-#   'ftol', 'gtol' & 'maxiter' specify Newton-Raphson termination criteria    #
+#                 Main user function                                           
+# Args:  									
+#   formula     - same format as mlogit. See help(formula)
+#   data        - input data (as a data.frame object) in "long" format
+#   choiceVar   - the data column containing alternative names
+#   maxiter     - maximum number of Newton-Raphson iterations to run 
+#   ftol        - function tolerance. 
+#                 Difference of two consecutive function evaluation
+#                 Criteria of terminating Newton's Iterative process
+#   gtol        - gradient norm tolerance.
+#   weights     - an optional vector of positive frequency weights.
+#   ncores      - number of processors allowed to use
+#   na.rm       - if FALSE then stop(), else remove rows of data with NA
+#   print.level - increase from 0 to progressively print more runing info
+#   linDepTol   - tolerance with which linear dep among cols is detected
+#   ...         - currently unused 
+#        
+# Output: 
+#   mnlogit object
+#        
+# Note:    
+#   'ftol', 'gtol' & 'maxiter' specify Newton-Raphson termination criteria 
 ###############################################################################
-mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
-             gtol = 1e-6, weights = NULL, ncores = 1, na.rm = TRUE, 
-             print.level=0, linDepTol = 1e-6, start=NULL, alt.subset=NULL, ...)
+mnlogit <- function(formula, data, choiceVar, maxiter = 50, ftol = 1e-6,
+                    gtol = 1e-6, weights = NULL, ncores = 1, na.rm = TRUE,
+                    print.level = 0, linDepTol = 1e-6, ...)
 {
     startTime <- proc.time()[3]
     initcall <- match.call()    # Store original function call
+    predict <- NULL             # Disused 
 
     # Basic parameter checking
     if (!is.data.frame(data))
-       stop("data must be a data.frame in long format or a mlogit.data object")
+        stop("'data' must be a data.frame in 'long' format")
     if (ncores < 1) {
         ncores <- 1
         warning("Setting ncores equal to: 1")
-    }
-    if (!is.null(choiceVar) && is.factor(data[[choiceVar]])) {
-        warning(paste("Column", choiceVar, "in data will NOT be treated as",
-                      "factor, but as character string!"))
-    }
-
-    # Get choiceVar if NULL from data (which MUST now be a mlogit.data object)
-    if (is.null(choiceVar) && !any(class(data) == "mlogit.data"))
-        stop("Arg data MUST be a mlogit.data object when arg choiceVar = NULL")
-    if (is.null(choiceVar)) {
-        choiceVar <- "_Alt_Indx_"
-        data[[choiceVar]] <- attr(data, "index")$alt # attach to 'data'
     }
 
     # Extract various types of variables from formula
@@ -73,19 +61,9 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
         stop("Error! Predictor variable(s) must be specified")
     if (is.null(response)) 
         stop("Error! Alternative variable must be specified")
-    
-    # Handle the alt.subset argument if not NULL 
-    if (!is.null(alt.subset)) {
-        if (sum(unique(data[[choiceVar]]) %in% alt.subset) < 2)
-            stop("Error! Atleast 2 alternatives in data must be in alt.subset")
-        keepRows <- data[[choiceVar]] %in% alt.subset
-        if (sum(keepRows) <= 0)
-            stop("Error! No altrnative in 'alt.subset' is in data.")
-        data <- data[keepRows, , drop=FALSE]  
-    }
-
+     
     # Determine relevant parameters
-    choice.set <- unique(data[[choiceVar]]) # reordered when data is sorted
+    choice.set <- unique(data[[choiceVar]])
     K <- length(choice.set) # number of choices
     if (nrow(data) %% K)
         stop("Mismatch between number of rows in data and number of choices.")
@@ -96,8 +74,6 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
       stop("Length of 'weights' arg must match number of observations in data.")
     if (!is.null(weights) && !all(weights > 0))
       stop("All entries in 'weights' must be strictly positive.")      
-    # Normalize weights
-    if (!is.null(weights)) weights <- weights * N / sum(weights)    
 
     # Work with only the columns appearing in formula
     data <- data[c(varNames, choiceVar)]
@@ -132,12 +108,9 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
     # Rearrange the input data.frame object
     # Sort according to choices: data for an atlernative should be contiguous
     data <- data[order(data[[choiceVar]]), ]
-    choice.set <- unique(data[[choiceVar]])
 
     # Obtain response vector as a vector of 0,1
-    respVec <- data[[attr(formula, "response")]]
-    if (is.factor(respVec)) respVec <- droplevels(respVec)
-    respVec <- as.numeric(respVec)
+    respVec <- as.numeric(data[[attr(formula, "response")]])
     min.respVec <- min(respVec)
     spread <- max(respVec) - min.respVec
     if (spread != 1) {
@@ -203,11 +176,11 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
     badCoeffNames <- makeCoeffNames(badVarsList, choice.set)
 
     # Eliminate linearly dependent columns
-    if (!is.null(X))
+    if (!is.null(X) && is.null(predict))
       X <- X[ , setdiff(1:ncol(X), badColsList$indSpVar), drop=FALSE]
-    if (!is.null(Y))
+    if (!is.null(Y) && is.null(predict))
       Y <- Y[ , setdiff(1:ncol(Y), badColsList$csvChCoeff), drop=FALSE]
-    if (!is.null(Z))
+    if (!is.null(Z) && is.null(predict))
       Z <- Z[ , setdiff(1:ncol(Z), badColsList$csvGenCoeff), drop=FALSE]
  
     # Get names of variables 
@@ -216,9 +189,6 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
     varNamesList$csvChCoeff <- colnames(Y)
     varNamesList$csvGenCoeff <- colnames(Z)
     coeffNames <- makeCoeffNames(varNamesList, choice.set)
-    
-    # Order the starting coefficients according to 'coeffNames' 
-    if (!is.null(start)) start[coeffNames] <- start
     
     # Do the subtraction: Z_ik - Zi0 (for Generic coefficients data)
     ### NOTE: Base choice (with respect to normalization) is fixed here
@@ -236,22 +206,31 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
  
     t1 <- proc.time()[3]    # Time at end of pre-processing
 
+    # Predict probability matrix and return to caller
+    if (!is.null(predict)) {
+        if (!is.null(badCoeffNames)) 
+            stop("Collinear columns in data. Prediction cancelled.")
+        predict <- eval.parent(predict)
+        probmat <- newtonRaphson(respVec, X, Y, Z, K, maxiter, gtol, ftol,
+                                 ncores, 0, NULL, predict)
+        colnames(probmat) <- choice.set
+        return(probmat)
+    }
+
     gc()  # Invoke garbage collector at end of pre-processing 
-    prep.time <- t1 - startTime
     if (print.level > 1) {
       cat(paste0("Base alternative is: ", baseChoiceName))
       cat(paste0("\nPreprocessing data for estimation took ", 
-                  round(prep.time, 3), " sec.\n"))
+                  round(t1 - startTime, 3), " sec.\n"))
     } 
+
     # Solve MLE using Newton-Raphson
     result <- newtonRaphson(respVec, X, Y, Z, K, maxiter, gtol, ftol, ncores,
-                  print.level, coeffNames, weights=weights, start=start)
-    result$est.stats$prepTimeSecs <- prep.time
+                            print.level, coeffNames, weights)    
     # Post-processing
     colnames(result$hessMat) <- coeffNames 
     rownames(result$hessMat) <- coeffNames
     names(result$grad)   <- coeffNames
-
     # Reorder coeff so that those for a choice are together 
     od <- reordering(varNamesList, choice.set)
     coeffNames <- makeCoeffNames(varNamesList, choice.set)
@@ -263,47 +242,28 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
                                            else rep(NA, length(badCoeffNames)))
     names(reordered_coeff) <- c(coeffNames[od],
         badCoeffNames[reordering(badVarsList, choice.set)])
-
-    # Set colnames for probability & residual matrix
-    colnames(result$probability) <- choice.set
-    if (maxiter > 0) colnames(result$residual)    <- choice.set
-
+    colnames(result$probability) <- choice.set[-1]
+    AIC <- 2*(result$model.size$nparams - log(abs(result$loglikelihood)))
     result$model.size$intercept <- interceptOn
-    attributes(formula) <- NULL
-   
-    # Loglikelihood and AIC  
-    logLik <- structure(-result$loglikelihood,
-                        df = result$model.size$nparams,    
-                        class = "logLik"
-                       )
-    AIC <- 2*(result$model.size$nparams + result$loglikelihood)
 
-    # 'index' attribute for data
-    index <- data.frame(chid = rep(1:result$model.size$N, result$model.size$K),
-                        alt = data[[choiceVar]])
-    attr(data, "index") <- index
-    
-    fit <- structure(
-             list(
-               coefficients  = coefficients,
-               logLik        = logLik,
-               gradient      = -result$grad,
-               hessian       = result$hessMat,
-               est.stat      = result$est.stats,
-               fitted.values = 1 - attr(result$residual, "outcome"),
-               probabilities = result$probability,
-               residuals     = result$residual,
-               df            = result$model.size$nparams, #
-               AIC           = AIC,                       #
-               choices       = choice.set,                # 
-               model.size    = result$model.size,         #
-               ordered.coeff = reordered_coeff,           #
-               model         = data,                     
-               freq          = freq.choices,             
-               formula       = Formula(formula(formula)),
-               call          = initcall),
-             class = "mnlogit"
-           )
+    fit <- structure(list(
+              coeff = coefficients,
+              probabilities = result$probability,
+              residuals = result$residual,
+              logLik = -result$loglikelihood,
+              df = result$model.size$nparams,
+              gradient = -result$grad,
+              hessian = result$hessMat,
+              AIC = AIC,
+              formula = formula,
+              data = data,
+              choices = choice.set,
+              freq = freq.choices,
+              model.size = result$model.size,
+              est.stats = result$est.stats,
+              ordered.coeff = reordered_coeff,
+              call = initcall
+           ), class = "mnlogit")
 
     if (print.level)
       cat(paste0("\nTotal time spent in mnlogit = ",
@@ -312,8 +272,6 @@ mnlogit <- function(formula, data, choiceVar=NULL, maxiter = 50, ftol = 1e-6,
 }
 
 # Makes names of model coefficients
-# Sets ordering of the Hessian and gradient rows.
-# Ensures order is in confirmation with design matrices 
 makeCoeffNames <- function (varNames, choices)
 {
     if (length(varNames) == 0) return(NULL)

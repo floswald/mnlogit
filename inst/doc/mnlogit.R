@@ -1,22 +1,22 @@
-### R code from vignette source '/data/home/ahasan/projects/mnlogit/CRAN_latest/mnlogit/inst/doc/mnlogit.Rnw'
+### R code from vignette source 'mnlogit.Rnw'
 ### Encoding: UTF-8
 
 ###################################################
-### code chunk number 1: mnlogit.Rnw:106-107
+### code chunk number 1: mnlogit.Rnw:113-114
 ###################################################
-options(prompt = "R> ", continue = "+  ", width = 60, useFancyQuotes = FALSE)
+options(prompt = "R> ", continue = "+  ", width = 70, useFancyQuotes = FALSE)
 
 
 ###################################################
-### code chunk number 2: mnlogit.Rnw:158-159
+### code chunk number 2: mnlogit.Rnw:171-172
 ###################################################
-library("mnlogit")
+library(mnlogit)
 
 
 ###################################################
-### code chunk number 3: mnlogit.Rnw:167-169
+### code chunk number 3: mnlogit.Rnw:177-179
 ###################################################
-data("Fish", package = 'mnlogit')
+data(Fish, package = 'mnlogit')
 head(Fish, 8)
 
 
@@ -53,67 +53,59 @@ head(Fish, 8)
 
 
 ###################################################
-### code chunk number 8: mnlogit.Rnw:310-313 (eval = FALSE)
+### code chunk number 8: mnlogit.Rnw:308-309 (eval = FALSE)
 ###################################################
-## mnlogit(formula, data, choiceVar = NULL, maxiter = 50, ftol = 1e-6, gtol
-##         = 1e-6, weights = NULL, ncores = 1, na.rm = TRUE, print.level = 0, 
-##         linDepTol = 1e-6, start = NULL, alt.subset = NULL, ...)
+## ?mnlogit
 
 
 ###################################################
-### code chunk number 9: mnlogit.Rnw:322-323
+### code chunk number 9: mnlogit.Rnw:312-315 (eval = FALSE)
+###################################################
+## mnlogit(formula, data, choiceVar, maxiter = 50, ftol = 1e-6,
+##         gtol = 1e-6, weights = NULL, ncores = 1, na.rm = TRUE,   
+##         print.level = 0, linDepTol = 1e-6, ...)
+
+
+###################################################
+### code chunk number 10: mnlogit.Rnw:324-325
 ###################################################
 fm <- formula(mode ~ price | income | catch)
 
 
 ###################################################
-### code chunk number 10: mnlogit.Rnw:340-342 (eval = FALSE)
+### code chunk number 11: mnlogit.Rnw:342-344
 ###################################################
-## fit <- mnlogit(fm, Fish, ncores=2)
-## class(fit)
-
-
-###################################################
-### code chunk number 11: mnlogit.Rnw:344-346
-###################################################
-fit <- mnlogit(fm, Fish, choiceVar="alt", ncores=2)
+fit <- mnlogit(fm, Fish, "alt", ncores=2)
 class(fit)
 
 
 ###################################################
-### code chunk number 12: mnlogit.Rnw:351-352
+### code chunk number 12: mnlogit.Rnw:348-349
 ###################################################
-print(fit, what = "eststat")
+print(fit$est.stats)
 
 
 ###################################################
-### code chunk number 13: mnlogit.Rnw:360-361
+### code chunk number 13: mnlogit.Rnw:357-358
 ###################################################
-print(fit, what = "modsize")
+print(fit$model.size)
 
 
 ###################################################
-### code chunk number 14: mnlogit.Rnw:374-376 (eval = FALSE)
+### code chunk number 14: mnlogit.Rnw:856-857
 ###################################################
-## library("mnlogit")
-## ?lrtest
+library(mlogit)
 
 
 ###################################################
-### code chunk number 15: mnlogit.Rnw:877-878
-###################################################
-library("mlogit")
-
-
-###################################################
-### code chunk number 16: mnlogit.Rnw:883-885
+### code chunk number 15: mnlogit.Rnw:862-864
 ###################################################
 source("simChoiceModel.R")
-data <- makeModel('X', K=10)
+data <- makeModel('X', K=5)
 
 
 ###################################################
-### code chunk number 17: mnlogit.Rnw:888-893
+### code chunk number 16: mnlogit.Rnw:867-872
 ###################################################
 K = length(unique(data$choices))
 N = nrow(data)/K
@@ -123,20 +115,20 @@ cat(paste0("Number of choices in simulated data = K = ", K, ".\nNumber of observ
 
 
 ###################################################
-### code chunk number 18: mnlogit.Rnw:897-899
+### code chunk number 17: mnlogit.Rnw:876-878
 ###################################################
 vars <- paste("X", 1:50, sep="", collapse=" + ")
 fm <- formula(paste("response ~ 1|", vars, " - 1 | 1"))
 
 
 ###################################################
-### code chunk number 19: mnlogit.Rnw:902-903
+### code chunk number 18: mnlogit.Rnw:881-882
 ###################################################
-system.time(fit.mnlogit <- mnlogit(fm, data, "choices"))  
+system.time(fit.mnlogit <- mnlogit(fm, data, "choices"))  # runs on 1 proc
 
 
 ###################################################
-### code chunk number 20: mnlogit.Rnw:906-910
+### code chunk number 19: mnlogit.Rnw:885-889
 ###################################################
 mdat <- mlogit.data(data[order(data$indivID), ], "response", shape="long", 
 alt.var="choices")
@@ -145,19 +137,19 @@ system.time(fit.mlogit <- mlogit(fm, mdat, method='bfgs'))
 
 
 ###################################################
-### code chunk number 21: mnlogit.Rnw:920-924
+### code chunk number 20: mnlogit.Rnw:899-903
 ###################################################
-library("nnet")
+library(nnet)
 ndat <- data[which(data$response > 0), ]
-fm.nnet <- paste("choices ~", vars, "- 1")   
-system.time(fit.nnet <- multinom(fm.nnet, ndat, reltol=1e-12)) 
+ff <- paste("choices ~", vars, "- 1")   # formula for nnet
+system.time(fit.nnet <- multinom(ff, ndat, reltol=1e-12)) 
 
 
 ###################################################
-### code chunk number 22: mnlogit.Rnw:928-931
+### code chunk number 21: mnlogit.Rnw:907-910
 ###################################################
-library("VGAM")
-system.time(fit.vglm <- vglm(fm.nnet, data=ndat, multinomial(refLevel=1),
-control=vglm.control(epsilon=1e-6)))
+library(VGAM)
+stop.vglm <- vglm.control(epsilon = 1e-6)
+system.time(fit.vglm <- vglm(ff, data=ndat, multinomial, control=stop.vglm))
 
 
